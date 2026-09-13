@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -46,11 +47,17 @@
         .health-message {
             font-size: 0.7rem;
             text-align: right;
+            white-space: pre-line;
         }
 
         .health-date {
             display: block;
             margin-top: 0.15rem;
+        }
+
+        .health-daily-count {
+            display: block;
+            margin-top: 0;
         }
 
         .page {
@@ -125,6 +132,13 @@
             background-position: center;
             background-repeat: no-repeat;
             background-size: cover;
+        }
+
+        .main-view nav[role='navigation'] svg {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            vertical-align: middle;
         }
 
         .landing-view {
@@ -236,6 +250,7 @@
     </style>
     @stack('styles')
 </head>
+
 <body>
     <header class="banner">
         <button
@@ -243,13 +258,14 @@
             class="menu-toggle"
             aria-label="Open menu"
             aria-controls="main-menu-panel"
-            aria-expanded="false"
-        >☰</button>
+            aria-expanded="false">☰</button>
         <h1>Push Button 👉 Receive Paper</h1>
         @if (filled($latestHealth?->Message))
-            <small class="health-message">
-                {{ $latestHealth->Message }}<span class="health-date">{{ $latestHealth->Date?->format('H:i d/m/Y') }}</span>
-            </small>
+        <small class="health-message">
+            {{ $latestHealth->Message }}
+            <span class="health-date">{{ $latestHealth->Date?->format('H:i d/m/Y') }}</span>
+            <span class="health-daily-count">Zines today: {{ $dailyDeviceMessageCount }}</span>
+        </small>
         @endif
     </header>
 
@@ -260,21 +276,21 @@
 
             <nav class="menu" aria-label="Main navigation">
                 @auth
-                    @if (auth()->user()->level === \App\Enums\UserLevel::Honcho)
-                        <a href="{{ route('admin.articles') }}">Articles</a>
-                        <a href="{{ route('admin.random-texts') }}">Random texts</a>
-                    @endif
+                @if (auth()->user()->level === \App\Enums\UserLevel::Honcho)
+                <a href="{{ route('admin.articles') }}">Articles</a>
+                <a href="{{ route('admin.random-texts') }}">Random texts</a>
+                @endif
 
-                    @if (auth()->user()->level === \App\Enums\UserLevel::Reporter)
-                        <a href="{{ route('reporter.suggest-story') }}">Suggest a story</a>
-                    @endif
+                @if (auth()->user()->level === \App\Enums\UserLevel::Reporter)
+                <a href="{{ route('reporter.suggest-story') }}">Suggest a story</a>
+                @endif
 
-                    <form method="post" action="{{ route('logout') }}">
-                        @csrf
-                        <button type="submit">Sign out</button>
-                    </form>
+                <form method="post" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit">Sign out</button>
+                </form>
                 @else
-                    <a href="{{ route('login') }}">Login</a>
+                <a href="{{ route('login') }}">Login</a>
                 @endauth
             </nav>
         </aside>
@@ -289,6 +305,13 @@
     @stack('scripts')
     <script>
         (() => {
+            const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            if (timezone) {
+                const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = `instazine_timezone=${encodeURIComponent(timezone)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`;
+            }
+
             const body = document.body;
             const banner = document.querySelector('.banner');
             const menu = document.querySelector('#main-menu-panel');
@@ -341,4 +364,5 @@
         })();
     </script>
 </body>
+
 </html>

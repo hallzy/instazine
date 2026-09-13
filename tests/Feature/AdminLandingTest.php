@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class AdminLandingTest extends TestCase
@@ -146,11 +147,12 @@ class AdminLandingTest extends TestCase
         $article = Article::query()->create([
             'Approved' => false,
             'Headline' => 'Original headline',
-            'Pic' => 'image.jpg',
+            'Pic' => 'article-pics/image.bmp',
             'Text' => "First line.\nSecond line.",
             'Author' => $honcho->id,
             'Date' => '2026-08-02 09:00:00',
         ]);
+        Storage::disk('local')->put($article->Pic, 'bitmap');
         Tracking::query()->create(['A_id' => $article->A_id]);
         Tracking::query()->create(['A_id' => $article->A_id]);
 
@@ -172,7 +174,10 @@ class AdminLandingTest extends TestCase
             ->assertSee('Edit article')
             ->assertSee('id="article-author-'.$article->A_id.'"', false)
             ->assertSee('value="'.$honcho->name.'"', false)
-            ->assertSee('type="hidden" name="author" value="'.$honcho->id.'"', false);
+            ->assertSee('type="hidden" name="author" value="'.$honcho->id.'"', false)
+            ->assertSee('class="article-form-thumbnail"', false)
+            ->assertSee('class="article-picture-input"', false)
+            ->assertDontSee('Current file');
 
         $this->actingAs($honcho)
             ->put(route('admin.articles.update', $article), [
@@ -283,6 +288,28 @@ class AdminLandingTest extends TestCase
             ->get('/admin/random-texts')
             ->assertOk()
             ->assertSee('Latest status');
+    }
+
+    public function test_honcho_pages_count_todays_0x18_messages_in_the_users_timezone(): void
+    {
+        Carbon::setTestNow('2026-09-11 12:00:00 UTC');
+
+        try {
+            Health::query()->create(['Date' => '2026-09-11 06:59:59', 'Message' => '0x18 previous local day']);
+            Health::query()->create(['Date' => '2026-09-11 07:00:00', 'Message' => '0x18 first today']);
+            Health::query()->create(['Date' => '2026-09-12 06:59:59', 'Message' => '0x18 second today']);
+            Health::query()->create(['Date' => '2026-09-12 07:00:00', 'Message' => '0x18 next local day']);
+            Health::query()->create(['Date' => '2026-09-11 12:00:00', 'Message' => '0x17 different message']);
+            $honcho = User::factory()->create(['level' => UserLevel::Honcho]);
+
+            $this->withUnencryptedCookie('instazine_timezone', 'America/Vancouver')
+                ->actingAs($honcho)
+                ->get('/admin/articles')
+                ->assertOk()
+                ->assertSee('Zines today: 2');
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_honcho_can_create_a_random_text(): void

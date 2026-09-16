@@ -14,6 +14,8 @@ return [
         env('INSTAZINE_DIVIDER_C'),
         env('INSTAZINE_DIVIDER_D'),
     ],
-    'printer_pixel_width' => (int) env('INSTAZINE_PRINTER_PIXEL_WIDTH', 450),
+    // Must match PRINTER_PIXEL_WIDTH in the ESP32 firmware.
+    'printer_pixel_width' => (int) env('INSTAZINE_PRINTER_PIXEL_WIDTH', 576),
     'image_height_max' => (int) env('INSTAZINE_IMAGE_HEIGHT_MAX', 2304),
+    'image_source_pixels_max' => (int) env('INSTAZINE_IMAGE_SOURCE_PIXELS_MAX', 20_000_000),
 ];

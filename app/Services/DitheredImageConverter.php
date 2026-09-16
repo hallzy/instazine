@@ -59,6 +59,18 @@ class DitheredImageConverter
 
     private function createImage(UploadedFile $picture): \GdImage
     {
+        $dimensions = @getimagesize($picture->getRealPath());
+        $maximumPixels = max(1, (int) config('instazine.image_source_pixels_max'));
+
+        if ($dimensions === false
+            || $dimensions[0] <= 0
+            || $dimensions[1] <= 0
+            || $dimensions[0] > intdiv($maximumPixels, $dimensions[1])) {
+            throw ValidationException::withMessages([
+                'pic' => 'The uploaded image dimensions are too large.',
+            ]);
+        }
+
         $source = match ($picture->getMimeType()) {
             'image/jpeg' => imagecreatefromjpeg($picture->getRealPath()),
             'image/png' => imagecreatefrompng($picture->getRealPath()),

@@ -103,6 +103,42 @@ class ReporterLandingTest extends TestCase
         $this->assertSame('image/bmp', getimagesizefromstring($contents)['mime']);
     }
 
+    public function test_failed_reporter_article_creation_removes_the_new_picture(): void
+    {
+        Storage::fake('local');
+        config()->set('instazine.printer_pixel_width', 384);
+        $reporter = User::factory()->create(['level' => UserLevel::Reporter]);
+
+        Article::creating(static function (): void {
+            throw new \RuntimeException('Deliberate reporter article creation failure.');
+        });
+
+        try {
+            $this->withoutExceptionHandling();
+
+            try {
+                $this->actingAs($reporter)
+                    ->post(route('reporter.suggest-story.store'), [
+                        'headline' => 'Failed suggestion',
+                        'pic' => UploadedFile::fake()->image('failed.jpg'),
+                        'text' => 'This should not be saved.',
+                    ]);
+
+                $this->fail('Expected reporter article creation to fail.');
+            } catch (\RuntimeException $exception) {
+                $this->assertSame(
+                    'Deliberate reporter article creation failure.',
+                    $exception->getMessage(),
+                );
+            }
+
+            $this->assertDatabaseMissing('Article', ['Headline' => 'Failed suggestion']);
+            $this->assertSame([], Storage::disk('local')->files('article-pics'));
+        } finally {
+            Article::flushEventListeners();
+        }
+    }
+
     public function test_reporter_name_must_use_database_safe_characters(): void
     {
         $this->from('/login')

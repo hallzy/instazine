@@ -34,14 +34,24 @@ class ReporterArticleController extends Controller
             'text' => ['nullable', 'string'],
         ]);
 
-        $article = Article::query()->create([
-            'Approved' => false,
-            'Headline' => $validated['headline'],
-            'Pic' => $request->hasFile('pic') ? $this->storePicture($request->file('pic')) : null,
-            'Text' => $validated['text'],
-            'Author' => $request->user()->id,
-            'Date' => now(),
-        ]);
+        $newPicture = $request->hasFile('pic')
+            ? $this->storePicture($request->file('pic'))
+            : null;
+
+        try {
+            $article = Article::query()->create([
+                'Approved' => false,
+                'Headline' => $validated['headline'],
+                'Pic' => $newPicture,
+                'Text' => $validated['text'],
+                'Author' => $request->user()->id,
+                'Date' => now(),
+            ]);
+        } catch (\Throwable $exception) {
+            $this->deletePicture($newPicture);
+
+            throw $exception;
+        }
 
         return redirect()->route('reporter.suggest-story.confirmation', $article);
     }
@@ -76,6 +86,13 @@ class ReporterArticleController extends Controller
     {
         $this->ensureReporter($request);
         abort_unless($article->Author === $request->user()->id, 403);
+    }
+
+    private function deletePicture(?string $path): void
+    {
+        if (filled($path) && Str::startsWith($path, 'article-pics/')) {
+            Storage::disk('local')->delete($path);
+        }
     }
 
     private function storePicture(\Illuminate\Http\UploadedFile $picture): string

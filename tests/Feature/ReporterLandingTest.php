@@ -68,6 +68,21 @@ class ReporterLandingTest extends TestCase
         $this->assertSame(1, User::query()->where('name', 'newsroom')->count());
     }
 
+    public function test_reporter_login_ignores_an_admin_intended_destination(): void
+    {
+        $reporter = User::factory()->create([
+            'name' => 'newsroom',
+            'level' => UserLevel::Reporter,
+        ]);
+
+        $this->withSession(['url.intended' => route('admin.articles')])
+            ->post('/login', [
+                'name' => $reporter->name,
+                'password' => 'instazine',
+            ])
+            ->assertRedirect(route('reporter.suggest-story'));
+    }
+
     public function test_reporter_suggestions_are_saved_as_unapproved_articles_for_the_current_user(): void
     {
         Storage::fake('local');
